@@ -14,6 +14,9 @@ process_args :: proc() {
 }
 
 main :: proc(){
+    init_vm()
+    defer free_vm()
+
     test_chunk := init_chunk()
     defer free_chunk(&test_chunk)
 
@@ -21,6 +24,4 @@ main :: proc(){
     chunk_write_op(&test_chunk, Op.RETURN,     1)
 
     disassemble_chunk(&test_chunk, "test_chunk")
-
-    free_chunk(&test_chunk)
 }

@@ -2,6 +2,9 @@ package main
 
 import "core:slice"
 
+/* 
+ *** Chunk Implementation ***
+ */
 Line_Num :: struct {
     ln: uint,
     start: uint,
@@ -91,4 +94,75 @@ chunk_write_constant :: proc(chunk: ^Chunk, value: Value, line: uint) {
 chunk_add_constant :: proc(chunk: ^Chunk, value: Value) -> uint {
     append(&chunk.constants, value)
     return len(chunk.constants)-1
+}
+
+/*
+ *** Virtual_Machine Implementation ***
+*/
+
+Virtual_Machine :: struct {
+    chunk: ^Chunk,
+    ip: []u8, // Instruction Pointer
+}
+
+Interpret_Result :: enum {
+    OK,
+    COMPILE_ERROR,
+    RUNTIME_ERROR,
+}
+
+@(private="file")
+vm: Virtual_Machine
+
+init_vm :: proc() {
+    vm.chunk = nil
+}
+
+free_vm :: proc() {
+
+}
+
+@(private="file")
+vm_advance :: proc(by: uint) {
+    vm.ip = vm.ip[by:]
+}
+
+// Gets the current op pointed to by vm.ip and advances it by 1
+@(private="file")
+vm_read_op :: proc() -> Op {
+    b := vm.ip[0]
+    vm_advance(1)
+    return Op(b)
+}
+
+// Gets n bytes from the start of vm.ip as a slice and advances it by n. should be used for fetching code params
+@(private="file")
+vm_read_params :: proc(n: uint) -> []u8 {
+    params := vm.ip[:n]
+    vm_advance(n)
+    return params
+}
+
+vm_run :: proc() -> Interpret_Result {
+    for {
+        #partial switch instruction := vm_read_op(); instruction {
+            case Op.RETURN:
+                return Interpret_Result.OK
+            case Op.LOAD_CONST, Op.LOAD_LONG_CONST:
+                const_index:uint = 0
+                if instruction == Op.LOAD_CONST { const_index = uint(vm_read_params(1)[0]) }
+                else { const_index = u24_to_uint(u24_from_slice(vm_read_params(3))) }
+                // TODO
+            case:
+                break
+
+        }
+    }
+}
+
+vm_interpret :: proc(chunk: ^Chunk) -> Interpret_Result {
+    vm.chunk = chunk
+    vm.ip = chunk.code[:]
+
+    return vm_run()
 }
