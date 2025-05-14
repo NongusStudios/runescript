@@ -2,3 +2,4 @@
 *.pdb
 *.out
 /ols.json
+/.vscode

@@ -4,12 +4,12 @@ import "core:fmt"
 
 // Debug function for printing a chunks instructions
 disassemble_byte :: proc(chunk: ^Chunk, offset: ^uint) {
-    fmt.printf("%04d ", offset^)
+    fmt.printf("%05d ", offset^)
     ln := chunk_get_line(chunk, offset^);
-    if ln == chunk_get_line(chunk, offset^ - 1) {
-        fmt.print("       | ")
+    if offset^ > 0 && ln == chunk_get_line(chunk, offset^ - 1) {
+        fmt.print("   | ")
     } else {
-        fmt.printf("ln: %4d ", ln)
+        fmt.printf("%4d ", ln)
     }
 
     op := chunk.code[offset^]
