@@ -129,7 +129,7 @@ free_chunk :: proc(chunk: ^Chunk){
 chunk_write_line :: proc(chunk: ^Chunk, ln: uint, instruction: uint){
     last_idx := len(chunk.lines)-1
     // Check if instruction is part of last written line
-    if len(chunk.lines) == 0 {
+    if last_idx == -1 {
         append(&chunk.lines, Line_Num{ln, instruction, instruction})
     } else if chunk.lines[last_idx].ln == ln {
         if chunk.lines[last_idx].end < instruction {
@@ -195,7 +195,6 @@ Virtual_Machine :: struct {
 
 Interpret_Result :: enum {
     OK,
-    COMPILE_ERROR,
     RUNTIME_ERROR,
 }
 
@@ -278,7 +277,7 @@ vm_binary_op :: proc(op: rune) -> Interpret_Result {
         case '/': c, result = value_divide(a, b)
     }
 
-    if result != Value_Result.OK { return Interpret_Result.COMPILE_ERROR }
+    if result != Value_Result.OK { return Interpret_Result.RUNTIME_ERROR }
     vm_stack_push(c)
     return Interpret_Result.OK
 }
@@ -314,7 +313,7 @@ vm_run :: proc() -> Interpret_Result {
                 vm_stack_push(vm.chunk.constants[const_index])
             case Op.NEGATE:
                 negated_value, result := value_negate(vm_stack_top())
-                if result != Value_Result.OK { return Interpret_Result.COMPILE_ERROR }
+                if result != Value_Result.OK { return Interpret_Result.RUNTIME_ERROR }
                 vm_stack_set_top(negated_value)
             case Op.ADD:      if r := vm_binary_op('+'); r != Interpret_Result.OK { return r }
             case Op.SUBTRACT: if r := vm_binary_op('-'); r != Interpret_Result.OK { return r }

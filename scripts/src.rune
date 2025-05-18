@@ -1,0 +1,8 @@
+/* 
+ * Multi-line test comment
+*/
+print("Hello, Runescript!");
+==;
+// Test comment
+print(55, 5.5, 100_000, .5, 5.);
+"endstr"
