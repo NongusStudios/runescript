@@ -5,6 +5,5 @@ I think both of these instructions should be included in the byte code and here'
 1. If `NEGATE` is removed then in order to negate a value not known at compile time, you would have to bump an extra value onto the stack which is unnecessary. 
 2. If `SUBTRACT` is removed then you would have to add an extra instruction (`ADD`) to perform a subtract operation.
 3. The only benefit either of these proposed changes provides, is a reduced instruction set, but they both add overhead for execution of subtract or negate operations, slowing these operations down.
-
 ### Conclusion
 It's worth-while including both of these instructions in Runescript's bytecode for the sake of performance, while still minimizing the use of the `NEGATE` instruction by reading negated number constants (e.g. `-5`) in as negative numbers.

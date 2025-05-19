@@ -4,7 +4,7 @@ The "trie" is a data structure that will be used check if an identifier is a key
 This data structure will be created from an array of keyword strings and there subsequent `Token_Type` in a struct. The array is sorted alphabetically by hand.
 E.G.
 ```
-KEYWORDS :: [?]Keyword_Identifier{
+KEYWORDS :: [?]Keyword_Pair{
 	{"elif",   ELIF},
 	{"else",   ELSE},
 	{"if",     IF},

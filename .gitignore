@@ -1,6 +1,9 @@
 *.exe
 *.pdb
 *.out
+
+/bin
+
 /ols.json
 /.vscode
 /docs/RunescriptNotes/.obsidian

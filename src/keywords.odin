@@ -22,6 +22,7 @@ KEYWORDS :: [?]Keyword_Pair {
     {"if",       Token_Type.IF},
     {"import",   Token_Type.IMPORT},
     {"int",      Token_Type.INT},
+    {"nil",      Token_Type.NIL},
     {"or",       Token_Type.OR},
     {"print",    Token_Type.PRINT},
     {"size",     Token_Type.SIZE},
@@ -155,7 +156,7 @@ keyword_trie_search :: proc(identifier: []rune) -> Token_Type {
             case ^Keyword_Trie_Branch: {
                 if next, ok := keyword_trie_branch_traverse(node, c); ok {
                     current = next
-                    fmt.printfln("info: traversed to %v", next)
+                    //fmt.printfln("info: traversed to %v", next)
                     continue
                 }
                 break

@@ -1,5 +1,4 @@
 A scripting language, whose interpreter will be written in Odin.
-
 # Goals
 This is a programming exercise to learn about writing languages and better familiarize myself with the Odin language + just have some plain old fun coding.
 
@@ -15,43 +14,37 @@ This is a programming exercise to learn about writing languages and better famil
 	- multi-file support (import)
 2. (Optionally) Hook the language up to Raylib so it can be used to make simple 2d games.
 
-# Language Details
+# Baseline Language Details
 
 ## Entry Point
 Unlike other scripting languages Runescript will have a main function as an entry point for the program, opposed to executing the first line.
-
+```
+func main() {
+	// entry
+}
+```
 ## Keywords
 ```
 and
-
 bool
 break
-
 continue
-
 double
-
 elif
 else
-
 false
 func
 float
-
 if
 import
 int
-
+nil
 or
-
 print
-
 size
 string
 struct
-
 var
-
 true
 ```
 ## Syntax

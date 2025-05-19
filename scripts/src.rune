@@ -1,8 +1,9 @@
 /* 
  * Multi-line test comment
 */
+var x: ?int = nil
 print("Hello, Runescript!")
-==;
+==
 // Test comment
 print(55, 5.5, 100_000, .5, 5.)
 "endstr"

@@ -10,39 +10,70 @@ import "core:unicode/utf8"
 
 Token_Type :: enum {
     // single-character tokens
-    LEFT_PAREN, RIGHT_PAREN,
-    LEFT_BRACE, RIGHT_BRACE,
-    LEFT_CURLY_BRACE, RIGHT_CURLY_BRACE,
-    COMMA, DOT, END_STATEMENT,
+    LEFT_PAREN,
+    RIGHT_PAREN,
+    LEFT_BRACKET,
+    RIGHT_BRACKET,
+    LEFT_BRACE,
+    RIGHT_BRACE,
+    COMMA,
+    DOT,
+    COLON,
+    OPTIONAL,
 
     // operators
-    EQUAL, EVAL,
-    MINUS, PLUS,
-    SLASH, STAR,
-    NOT,   NOT_EVAL,
-    GREATER_THAN, GREATER_EQUAL,
-    LESS_THAN, LESS_EQUAL,
+    EQUAL,
+    EVAL,
+    MINUS,
+    PLUS,
+    SLASH,
+    STAR,
+    NOT,
+    NOT_EVAL,
+    GREATER_THAN,
+    GREATER_EQUAL,
+    LESS_THAN,
+    LESS_EQUAL,
 
     // literals
-    IDENTIFIER, STRING_LITERAL, NUMBER_LITERAL,
+    IDENTIFIER,
+    STRING_LITERAL,
+    NUMBER_LITERAL,
 
     // keywords
-    AND, STRUCT, ELSE,
-    FOR, FUNC, IF, ELIF,
-    OR, RETURN, VAR,
-    BREAK, CONTINUE,
+    AND,
+    STRUCT,
+    ELSE,
+    FOR,
+    FUNC,
+    IF,
+    ELIF,
+    OR,
+    RETURN,
+    VAR,
+    BREAK,
+    CONTINUE,
     IMPORT,
 
     // builtin
     // ---- types
-    INT, SIZE, FLOAT, DOUBLE, STRING, BOOL,
+    INT,
+    SIZE,
+    FLOAT,
+    DOUBLE,
+    STRING,
+    BOOL,
     // ---- values
-    TRUE, FALSE, NIL,
+    TRUE,
+    FALSE,
+    NIL,
     // ---- procedures
     PRINT,
 
     // misc
-    ERROR, EOF,
+    END_STATEMENT,
+    EOF,
+    ERROR,
     MAX
 }
 
@@ -175,9 +206,16 @@ parser_skip_whitespace :: proc() {
             case '/': {
                 if parser_peek_next() == '/' {
                     for parser_peek() != '\n' && !parser_at_end() { parser_advance() }
+                    parser_advance() // advance past newline
+                    parser.ln += 1
                 } else if parser_peek_next() == '*' {
                     parser_advance(); parser_advance() // advance past /*
-                    for !(parser_peek() == '*' && parser_peek_next() == '/') && !parser_at_end() { parser_advance() }
+                    for !(parser_peek() == '*' && parser_peek_next() == '/') && !parser_at_end() {
+                        if parser_peek() == '\n' {
+                            parser.ln += 1
+                        }           
+                        parser_advance()
+                    }
                     parser_advance(); parser_advance() // advance past */
                 }
             }
@@ -245,10 +283,10 @@ scan_token :: proc() -> Token {
     switch c := parser_advance(); c {
         case '(': return parser_make_token(Token_Type.LEFT_PAREN)
         case ')': return parser_make_token(Token_Type.RIGHT_PAREN)
-        case '[': return parser_make_token(Token_Type.LEFT_BRACE)
-        case ']': return parser_make_token(Token_Type.RIGHT_BRACE)
-        case '{': return parser_make_token(Token_Type.LEFT_CURLY_BRACE)
-        case '}': return parser_make_token(Token_Type.RIGHT_CURLY_BRACE)
+        case '[': return parser_make_token(Token_Type.LEFT_BRACKET)
+        case ']': return parser_make_token(Token_Type.RIGHT_BRACKET)
+        case '{': return parser_make_token(Token_Type.LEFT_BRACE)
+        case '}': return parser_make_token(Token_Type.RIGHT_BRACE)
         case ',': return parser_make_token(Token_Type.COMMA)
         case '.': {
             // in-case '.1234'
@@ -261,6 +299,8 @@ scan_token :: proc() -> Token {
         case '+': return parser_make_token(Token_Type.PLUS)
         case '*': return parser_make_token(Token_Type.STAR)
         case '/': return parser_make_token(Token_Type.SLASH)
+        case '?': return parser_make_token(Token_Type.OPTIONAL)
+        case ':': return parser_make_token(Token_Type.COLON)
         case '!': return parser_make_token(Token_Type.NOT_EVAL      if parser_match('=') else Token_Type.NOT)
         case '=': return parser_make_token(Token_Type.EVAL          if parser_match('=') else Token_Type.EQUAL)
         case '<': return parser_make_token(Token_Type.LESS_EQUAL    if parser_match('=') else Token_Type.LESS_THAN)
@@ -281,7 +321,7 @@ scan_token :: proc() -> Token {
         }
     }
 
-    return make_error_token("unexpected character")
+    return make_error_token("unexpected character '%c' at line %d", parser.sub[parser.sub_length-2], parser.ln)
 }
 
 compile :: proc(src: string) -> (Chunk, Compile_Result) {
