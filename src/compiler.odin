@@ -74,6 +74,8 @@ parser: Parser
 
 @(private="file")
 init_parser :: proc(src: string) {
+    init_keyword_trie()
+
     src           := string_to_runes(src)
     defer delete(src)
     parser.src     = make([]rune, len(src)+1)
@@ -90,6 +92,7 @@ free_parser :: proc() {
     delete(parser.src)
     parser.src = nil
     parser.sub = nil
+    free_keyword_trie()
 }
 
 make_error_token :: proc(format: string, args: ..any) -> Token {
@@ -216,83 +219,10 @@ parser_make_number_token :: proc() -> Token {
     return parser_make_token(Token_Type.NUMBER_LITERAL)
 }
 
-// TODO create a less hard-coded way of checking keywords while still preserving performance
 identifier_token_type :: proc() -> Token_Type {
     if parser.sub_length == 0 { return Token_Type.ERROR }
 
-    switch parser.sub[0] {
-        case 'a': if parser_check_rest_of_word(1, "nd") {
-            return Token_Type.AND
-        }
-        case 'b': if parser.sub_length > 1 { switch parser.sub[1] {
-            case 'r': if parser_check_rest_of_word(2, "eak") {
-                return Token_Type.BREAK
-            }
-            case 'o': if parser_check_rest_of_word(2, "ol") {
-                return Token_Type.BOOL
-            }
-        }}
-        case 'c': if parser_check_rest_of_word(1, "ontinue") {
-            return Token_Type.CONTINUE
-        }
-        case 'd': if parser_check_rest_of_word(1, "double") {
-            return Token_Type.DOUBLE
-        }
-        case 'e': if parser.sub_length-1 == 4 && parser.sub[1] == 'l' {
-            switch parser.sub[2] {
-                case 'i': if parser.sub[3] == 'f' { return Token_Type.ELIF }
-                case 's': if parser.sub[3] == 'e' { return Token_Type.ELSE }
-            }
-        }
-        case 'f': if parser.sub_length > 1 { switch parser.sub[1] {
-            case 'a': if parser_check_rest_of_word(2, "lse") {
-                return Token_Type.FALSE
-            }
-            case 'l': if parser_check_rest_of_word(2, "oat") {
-                return Token_Type.FLOAT
-            }
-            case 'u': if parser_check_rest_of_word(2, "nc") {
-                return Token_Type.FUNC
-            }
-        }}
-        case 'i': if parser.sub_length > 1 { switch parser.sub[1] {
-            case 'f': return Token_Type.IF
-            case 'm': if parser_check_rest_of_word(2, "port") {
-                return Token_Type.IMPORT
-            }
-            case 'n': if parser.sub_length-1 == 3 && parser.sub[2] == 't' {
-                return Token_Type.INT
-            }
-        }}
-        case 'o': if parser.sub_length-1 == 2 && parser.sub[1] == 'r' {
-            return Token_Type.OR
-        }
-        case 'p': if parser_check_rest_of_word(1, "rint") {
-            return Token_Type.PRINT
-        }
-        case 's': if parser.sub_length > 1 { switch parser.sub[1] {
-            case 'i': if parser_check_rest_of_word(2, "ze") {
-                return Token_Type.SIZE
-            }            // length of string and struct is 6 
-            case 't': if parser.sub_length-1 == 6 && parser.sub[2] == 'r'{
-                switch parser.sub[3] {
-                    case 'i': if parser_check_rest_of_word(4, "ng") {
-                        return Token_Type.STRING
-                    }
-                    case 'u': if parser_check_rest_of_word(4, "ct") {
-                        return Token_Type.STRUCT
-                    }
-                }
-            }
-        }}
-        case 'v': if parser_check_rest_of_word(1, "ar"){
-            return Token_Type.VAR
-        }
-        case 't': if parser_check_rest_of_word(1, "rue"){
-            return Token_Type.TRUE
-        }
-    }
-    return Token_Type.IDENTIFIER
+    return keyword_trie_search(parser.sub[:parser.sub_length-1])
 }
 
 @(private="file")

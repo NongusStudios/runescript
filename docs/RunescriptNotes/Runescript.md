@@ -24,8 +24,8 @@ Unlike other scripting languages Runescript will have a main function as an entr
 ```
 and
 
-break
 bool
+break
 
 continue
 
@@ -34,12 +34,12 @@ double
 elif
 else
 
+false
 func
 float
-false
 
-import
 if
+import
 int
 
 or
@@ -47,8 +47,8 @@ or
 print
 
 size
-struct
 string
+struct
 
 var
 
