@@ -57,7 +57,7 @@ true
 ## Syntax
 Runescript's syntax is inspired by a mix of both c and gdscript taking my favorite parts from each language. Runescript will not need semi-colons at the end of lines, a new line will serve as an indicator unless a bracket, or curly-brace has not been closed. Then the parser will continue reading until a closing bracket is found.
 - comments: `// 1 Line Comment` `/* Multi-Line Comment */`
-- semi-colon: ends the current statement
+- semi-colon: (optional) ends the current statement
 - typed variable definition: `var my_var: Type = Value`
 - inferred type variable definition: `var my_var := Value`
 - for-loop: `for condition {}`

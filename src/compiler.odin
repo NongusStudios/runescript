@@ -13,7 +13,7 @@ Token_Type :: enum {
     LEFT_PAREN, RIGHT_PAREN,
     LEFT_BRACE, RIGHT_BRACE,
     LEFT_CURLY_BRACE, RIGHT_CURLY_BRACE,
-    COMMA, DOT, SEMICOLON,
+    COMMA, DOT, END_STATEMENT,
 
     // operators
     EQUAL, EVAL,
@@ -53,10 +53,9 @@ Token :: struct {
 }
 
 Parser :: struct {
-    src: []rune,
-    sub: []rune,
-    start: uint,
-    current: uint,
+    src:        []rune,
+    sub:        []rune,
+    sub_length: uint,
     ln:  uint
 }
 
@@ -81,10 +80,9 @@ init_parser :: proc(src: string) {
     copy(parser.src, src)
     parser.src[len(parser.src)-1] = 0
 
-    parser.sub     = parser.src[0:1]
-    parser.start   = 0
-    parser.current = 0
-    parser.ln      = 1
+    parser.sub        = parser.src[:]
+    parser.sub_length = 1
+    parser.ln         = 1
 }
 
 @(private="file")
@@ -123,23 +121,22 @@ make_compile_result_ok :: proc() -> Compile_Result {
 }
 
 parser_at_end :: proc() -> bool {
-    return parser.src[parser.current] == 0
+    return parser.sub[parser.sub_length-1] == 0
 }
 
 parser_peek :: proc() -> rune {
-    return parser.sub[len(parser.sub)-1]
+    return parser.sub[parser.sub_length-1]
 }
 
 parser_peek_next :: proc() -> rune {
     if parser_at_end() { return 0 }
-    return parser.src[parser.current+1]
+    return parser.sub[parser.sub_length]
 }
 
 @(private="file")
 parser_advance :: proc() -> rune {
-    parser.current += 1
-    parser.sub = parser.src[parser.start:parser.current+1]
-    return parser.sub[len(parser.sub)-2]
+    parser.sub_length += 1
+    return parser.sub[parser.sub_length-2]
 }
 
 // checks if current rune matches with c, then advances if true
@@ -155,7 +152,7 @@ parser_match :: proc(c: rune) -> bool {
 parser_make_token :: proc(t_type: Token_Type) -> Token {
     t: Token = {
         type=t_type,
-        sub =parser.sub[:parser.current-parser.start],
+        sub =parser.sub[:parser.sub_length-1],
         ln  =parser.ln,
     }
 
@@ -171,10 +168,6 @@ parser_skip_whitespace :: proc() {
             case ' ','\r','\t': {
                 parser_advance()
             }
-            case '\n': {
-                parser.ln += 1
-                parser_advance()
-            }
             // comments
             case '/': {
                 if parser_peek_next() == '/' {
@@ -185,14 +178,16 @@ parser_skip_whitespace :: proc() {
                     parser_advance(); parser_advance() // advance past */
                 }
             }
-            case: return
+            case: {
+                return
+            }
         }
     }
 }
 
-parser_check_rest_of_word :: proc(offset: int, rest: string) -> bool {
-    if len(parser.sub[offset:parser.current-parser.start]) != len(rest) { return false }
-    s := utf8.runes_to_string(parser.sub[offset:parser.current-parser.start])
+parser_check_rest_of_word :: proc(offset: uint, rest: string) -> bool {
+    if parser.sub_length - offset - 1 != len(rest) { return false }
+    s := utf8.runes_to_string(parser.sub[offset:parser.sub_length - 1])
     defer delete(s)
 
     return s == rest
@@ -223,14 +218,13 @@ parser_make_number_token :: proc() -> Token {
 
 // TODO create a less hard-coded way of checking keywords while still preserving performance
 identifier_token_type :: proc() -> Token_Type {
-    sub_len := len(parser.sub)
-    if sub_len == 0 { return Token_Type.ERROR }
+    if parser.sub_length == 0 { return Token_Type.ERROR }
 
     switch parser.sub[0] {
         case 'a': if parser_check_rest_of_word(1, "nd") {
             return Token_Type.AND
         }
-        case 'b': if sub_len > 1 { switch parser.sub[1] {
+        case 'b': if parser.sub_length > 1 { switch parser.sub[1] {
             case 'r': if parser_check_rest_of_word(2, "eak") {
                 return Token_Type.BREAK
             }
@@ -244,13 +238,13 @@ identifier_token_type :: proc() -> Token_Type {
         case 'd': if parser_check_rest_of_word(1, "double") {
             return Token_Type.DOUBLE
         }
-        case 'e': if sub_len == 4 && parser.sub[1] == 'l' {
+        case 'e': if parser.sub_length-1 == 4 && parser.sub[1] == 'l' {
             switch parser.sub[2] {
                 case 'i': if parser.sub[3] == 'f' { return Token_Type.ELIF }
                 case 's': if parser.sub[3] == 'e' { return Token_Type.ELSE }
             }
         }
-        case 'f': if sub_len > 1 { switch parser.sub[1] {
+        case 'f': if parser.sub_length > 1 { switch parser.sub[1] {
             case 'a': if parser_check_rest_of_word(2, "lse") {
                 return Token_Type.FALSE
             }
@@ -261,26 +255,26 @@ identifier_token_type :: proc() -> Token_Type {
                 return Token_Type.FUNC
             }
         }}
-        case 'i': if sub_len > 1 { switch parser.sub[1] {
+        case 'i': if parser.sub_length > 1 { switch parser.sub[1] {
             case 'f': return Token_Type.IF
             case 'm': if parser_check_rest_of_word(2, "port") {
                 return Token_Type.IMPORT
             }
-            case 'n': if sub_len == 3 && parser.sub[2] == 't' {
+            case 'n': if parser.sub_length-1 == 3 && parser.sub[2] == 't' {
                 return Token_Type.INT
             }
         }}
-        case 'o': if sub_len == 2 && parser.sub[1] == 'r' {
+        case 'o': if parser.sub_length-1 == 2 && parser.sub[1] == 'r' {
             return Token_Type.OR
         }
         case 'p': if parser_check_rest_of_word(1, "rint") {
             return Token_Type.PRINT
         }
-        case 's': if sub_len > 1 { switch parser.sub[1] {
+        case 's': if parser.sub_length > 1 { switch parser.sub[1] {
             case 'i': if parser_check_rest_of_word(2, "ze") {
                 return Token_Type.SIZE
             }            // length of string and struct is 6 
-            case 't': if sub_len == 6 && parser.sub[2] == 'r'{
+            case 't': if parser.sub_length-1 == 6 && parser.sub[2] == 'r'{
                 switch parser.sub[3] {
                     case 'i': if parser_check_rest_of_word(4, "ng") {
                         return Token_Type.STRING
@@ -315,8 +309,8 @@ scan_token :: proc() -> Token {
     }
 
     parser_skip_whitespace()
-    parser.start = parser.current
-    parser.sub = parser.src[parser.start:parser.current+1]
+    parser.sub = parser.sub[parser.sub_length-1:]
+    parser.sub_length = 1
     
     switch c := parser_advance(); c {
         case '(': return parser_make_token(Token_Type.LEFT_PAREN)
@@ -325,7 +319,6 @@ scan_token :: proc() -> Token {
         case ']': return parser_make_token(Token_Type.RIGHT_BRACE)
         case '{': return parser_make_token(Token_Type.LEFT_CURLY_BRACE)
         case '}': return parser_make_token(Token_Type.RIGHT_CURLY_BRACE)
-        case ';': return parser_make_token(Token_Type.SEMICOLON)
         case ',': return parser_make_token(Token_Type.COMMA)
         case '.': {
             // in-case '.1234'
@@ -343,6 +336,13 @@ scan_token :: proc() -> Token {
         case '<': return parser_make_token(Token_Type.LESS_EQUAL    if parser_match('=') else Token_Type.LESS_THAN)
         case '>': return parser_make_token(Token_Type.GREATER_EQUAL if parser_match('=') else Token_Type.GREATER_THAN)
         case '"': return parser_make_string_token()
+        case ';','\n': {
+            t := parser_make_token(Token_Type.END_STATEMENT)
+            if c == '\n' {
+                parser.ln += 1
+            }
+            return t
+        }
         case: {
             // number literal
             if is_digit(c) { return parser_make_number_token() }
@@ -376,7 +376,11 @@ compile :: proc(src: string) -> (Chunk, Compile_Result) {
             fmt.printf("%4d ", token.ln)
             ln = token.ln
         } else { fmt.print("   | ") }
-        fmt.printfln("%v, '%s'", token.type, token.sub)
+        if token.type != Token_Type.END_STATEMENT {
+            fmt.printfln("%v, '%s'", token.type, token.sub)
+        } else {
+            fmt.printfln("%v", token.type)
+        }
 
         if(token.type == Token_Type.EOF) { break }
     }
