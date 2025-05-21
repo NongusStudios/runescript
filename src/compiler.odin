@@ -259,7 +259,7 @@ parser_make_string_token :: proc() -> Token {
     defer delete(tokens)
 
     for parser_peek() != '"' && !parser_at_end() {
-        switch c := parser_peek(); c {
+        switch parser_peek() {
             case '\n': {
                 parser.ln += 1
                 parser_advance()
@@ -277,6 +277,11 @@ parser_make_string_token :: proc() -> Token {
 
                 for parser_peek() != '}' && !parser_at_end() {
                     append(&tokens, parser_scan_token())
+                    // take tokens out of queue from nested string and put them into the right sequence
+                    for len(parser.tokenQueue) > 0 {
+                        append(&tokens, parser.tokenQueue[0])
+                        ordered_remove(&parser.tokenQueue, 0)
+                    }
                 }
                 if parser_at_end() { return make_error_token("unterminated interpolation in string on ln: %d", parser.ln) }
 
