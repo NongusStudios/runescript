@@ -151,12 +151,14 @@ free_keyword_trie :: proc() {
 */
 keyword_trie_search :: proc(identifier: []rune) -> Token_Type {
     current: Keyword_Trie_Node = &trie
+    i := 0
     for c in identifier {
         switch node in current {
             case ^Keyword_Trie_Branch: {
                 if next, ok := keyword_trie_branch_traverse(node, c); ok {
                     current = next
                     //fmt.printfln("info: traversed to %v", next)
+                    i += 1
                     continue
                 }
                 break
@@ -164,7 +166,7 @@ keyword_trie_search :: proc(identifier: []rune) -> Token_Type {
             case ^Keyword_Trie_Leaf: break
         }
     }
-    if leaf, ok := current.(^Keyword_Trie_Leaf); ok {
+    if leaf, ok := current.(^Keyword_Trie_Leaf); ok && len(identifier) == i {
         return leaf.type
     }
     return Token_Type.IDENTIFIER

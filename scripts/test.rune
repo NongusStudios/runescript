@@ -1,0 +1,5 @@
+
+func main() {
+    var x: int = 18
+    print("There are ${x} naked cowboys in the showers at ram ranch!")
+}

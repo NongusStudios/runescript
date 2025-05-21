@@ -37,7 +37,11 @@ Token_Type :: enum {
 
     // literals
     IDENTIFIER,
-    STRING_LITERAL,
+    STRING_LITERAL_START,
+    STRING_LITERAL_END,
+    STRING_LITERAL_VALUE,
+    STRING_INTERP_START,
+    STRING_INTERP_END,
     NUMBER_LITERAL,
 
     // keywords
@@ -87,7 +91,9 @@ Parser :: struct {
     src:        []rune,
     sub:        []rune,
     sub_length: uint,
-    ln:  uint
+    ln:  uint,
+    tokenQueue: [dynamic]Token, // For single statements that need multiple tokens generated within their context
+                                // e.g. string interpolation
 }
 
 Compile_Error :: enum {
@@ -116,13 +122,17 @@ init_parser :: proc(src: string) {
     parser.sub        = parser.src[:]
     parser.sub_length = 1
     parser.ln         = 1
+
+    parser.tokenQueue = make([dynamic]Token, 0, 32)
 }
 
 @(private="file")
 free_parser :: proc() {
     delete(parser.src)
+    delete(parser.tokenQueue)
     parser.src = nil
     parser.sub = nil
+    parser.tokenQueue = nil
     free_keyword_trie()
 }
 
@@ -173,6 +183,12 @@ parser_advance :: proc() -> rune {
     return parser.sub[parser.sub_length-2]
 }
 
+@(private="file")
+parser_reset_substring :: proc() {
+    parser.sub = parser.sub[parser.sub_length-1:]
+    parser.sub_length = 1
+}
+
 // checks if current rune matches with c, then advances if true
 @(private="file")
 parser_match :: proc(c: rune) -> bool {
@@ -217,7 +233,7 @@ parser_skip_whitespace :: proc() {
                         parser_advance()
                     }
                     parser_advance(); parser_advance() // advance past */
-                }
+                } else { return }
             }
             case: {
                 return
@@ -236,16 +252,57 @@ parser_check_rest_of_word :: proc(offset: uint, rest: string) -> bool {
 
 @(private="file")
 parser_make_string_token :: proc() -> Token {
+    t := parser_make_token(Token_Type.STRING_LITERAL_START)
+    parser_reset_substring()
+
+    tokens := make([dynamic]Token, 0, 32)
+    defer delete(tokens)
+
     for parser_peek() != '"' && !parser_at_end() {
-        if parser_peek() == '\n' { parser.ln += 1 }
-        parser_advance()
+        switch c := parser_peek(); c {
+            case '\n': {
+                parser.ln += 1
+                parser_advance()
+            }
+            case '\\': if parser_peek_next() == '$' { parser_advance(); parser_advance() }
+            case '$': if parser_peek_next() == '{' {
+                if parser.sub_length > 1 {
+                    append(&tokens, parser_make_token(Token_Type.STRING_LITERAL_VALUE))
+                    parser_reset_substring()
+                }
+
+                parser_advance(); parser_advance()
+                append(&tokens, parser_make_token(Token_Type.STRING_INTERP_START))
+                parser_reset_substring()
+
+                for parser_peek() != '}' && !parser_at_end() {
+                    append(&tokens, parser_scan_token())
+                }
+                if parser_at_end() { return make_error_token("unterminated interpolation in string on ln: %d", parser.ln) }
+
+                parser_reset_substring(); parser_advance() // past closing }
+
+                append(&tokens, parser_make_token(Token_Type.STRING_INTERP_END))
+                parser_reset_substring()
+            }
+            case: parser_advance()
+        }
     }
 
     if parser_at_end() { return make_error_token("unterminated string on ln: %d", parser.ln) }
 
-    // closing quote
+    if parser.sub_length > 1 {
+        append(&tokens, parser_make_token(Token_Type.STRING_LITERAL_VALUE))
+        parser_reset_substring()
+    }
+
     parser_advance()
-    return parser_make_token(Token_Type.STRING_LITERAL)
+    append(&tokens, parser_make_token(Token_Type.STRING_LITERAL_END))
+    parser_reset_substring()
+
+    append(&parser.tokenQueue, ..tokens[:])
+
+    return t
 }
 
 @(private="file")
@@ -271,14 +328,20 @@ parser_make_identifier_token :: proc() -> Token {
 }
 
 @(private="file")
-scan_token :: proc() -> Token {
+parser_scan_token :: proc() -> Token {
+    // return first token from queue and remove it, if queue contains anything
+    if len(parser.tokenQueue) > 0 {
+        t := parser.tokenQueue[0]
+        ordered_remove(&parser.tokenQueue, 0)
+        return t
+    }
+    
     if parser_at_end() {
         return Token{type=Token_Type.EOF}
     }
 
     parser_skip_whitespace()
-    parser.sub = parser.sub[parser.sub_length-1:]
-    parser.sub_length = 1
+    parser_reset_substring()
     
     switch c := parser_advance(); c {
         case '(': return parser_make_token(Token_Type.LEFT_PAREN)
@@ -330,7 +393,7 @@ compile :: proc(src: string) -> (Chunk, Compile_Result) {
 
     ln: uint = 0
     for {
-        token := scan_token()
+        token := parser_scan_token()
 
         // check for errors
         if token.type == Token_Type.ERROR {
@@ -346,7 +409,7 @@ compile :: proc(src: string) -> (Chunk, Compile_Result) {
             fmt.printf("%4d ", token.ln)
             ln = token.ln
         } else { fmt.print("   | ") }
-        if token.type != Token_Type.END_STATEMENT {
+        if token.type != Token_Type.END_STATEMENT && token.type != Token_Type.EOF {
             fmt.printfln("%v, '%s'", token.type, token.sub)
         } else {
             fmt.printfln("%v", token.type)

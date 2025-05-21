@@ -84,6 +84,10 @@ Variables that can equal nil will need to be explicitly marked as such in their 
 - `var opt: ?int = 1` will be equal to something
 Checking if a value is `nil` will simply be checking equality in an if statement:
 `if opt == nil { return nil }`
+
+### String Interpolation
+In runescript strings will support interpolation.
+When `${...}` is found within a string literal whats inside the bracket will be processed as code and the output will be formatted into the string value.
 ## Running Runescript
 Runescript files (.rune) will be compiled into bytecode files (.scroll). The compiled files can then be executed.
 ### Command Line Arguments
