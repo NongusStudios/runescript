@@ -41,9 +41,7 @@ build_script :: proc(path: string, out: string, timeit: bool, timeit_units: stri
     if timeit { stamp = time.now() }
 
     chunk, result := compile(content)
-    if result.e != Compile_Error.OK {
-        defer delete(result.what)
-        fmt.eprintfln("build_script -> error: failed to compile %s\n    %s", path, result.what)
+    if !result {
         return 1
     }
     defer free_chunk(&chunk)

@@ -114,7 +114,7 @@ Runescript's interpreter will tokenize and convert all source code into bytecode
 While this may not be the fastest method of code execution, it is the simplest, and since this project is purely for my own enjoyment, and a learning experience it will be the ideal way to implement this language.
 
 ### Bytecode
-Runescript code will be compiled down to a simple list of bytes, that translate to instructions, and operands for those instructions. This bytecode is separated into chunks (each Runescript file would be its own chunk) that would all be stored within a single VM for execution.
+Runescript code will be compiled down to a simple list of bytes, that translate to instructions, and operands for those instructions. This bytecode is separated into chunks that would all be stored within a single VM for execution.
 
 #### Instructions
 0. `LOAD_CONST`: loads a constant from this chunks constant pool to the top of the stack
